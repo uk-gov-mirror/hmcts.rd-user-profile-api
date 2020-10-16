@@ -1,0 +1,105 @@
+server:
+  port: ${PORT:8091}
+
+management:
+  endpoints:
+    jmx:
+      exposure:
+        include: 'health'
+    web:
+      base-path: "/"
+  endpoint:
+    health:
+      show-details: "always"
+
+spring:
+  application:
+    name: User Profile API
+  jackson.date-format: yyyy-MM-dd
+  flyway.enabled: true
+  main:
+    allow-bean-definition-overriding: true
+  security:
+      oauth2:
+        client:
+          provider:
+            oidc:
+              issuer-uri: ${OPEN_ID_API_BASE_URI:https://idam-web-public.aat.platform.hmcts.net/o}
+          registration:
+            oidc:
+              client-id: microservicekey-rd-user-profile-api
+              client-secret: ${S2S_SECRET:AAAAAAAAAAAAAAAA}
+
+### database configuration
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5428}/${POSTGRES_NAME:dbuserprofile}${POSTGRES_CONNECTION_OPTIONS:?}
+    username: ${POSTGRES_USERNAME:dbuserprofile}
+    password: ${POSTGRES_PASSWORD:dbuserprofile}
+    properties:
+      charSet: UTF-8
+    tomcat:
+      max-active: 10
+      max-idle: 10
+      min-idle: 2
+      max-wait: 10000
+      test-on-borrow: true
+      test-on-connect: true
+      test-on-idle: true
+      validation-query: "SELECT 1"
+      time-between-eviction-runs-millis: 10000
+      test-while-idle: true
+      test-on-return: true
+      remove-abandoned: true
+      remove-abandoned-timeout: 60
+      log-abandoned: true
+      abandon-when-percentage-full: 0
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+security:
+  anonymousPaths:
+    - "/"
+    - "/csrf"
+    - "/health"
+    - "/health/liveness"
+    - "/health/readiness"
+    - "/loggers/**"
+    - "/swagger-ui.html"
+    - "/swagger-resources/**"
+    - "/v2/api-docs"
+    - "/webjars/springfox-swagger-ui/**"
+    - "/favicon.ico"
+    - "/error"
+
+### dependency configuration
+idam:
+  s2s-auth:
+    totp_secret: ${S2S_SECRET:AAAAAAAAAAAAAAAA}
+    microservice: rd_user_profile_api
+    url: ${S2S_URL:http://rpe-service-auth-provider-aat.service.core-compute-aat.internal}
+    pbaFromUserAccountMap: false
+  s2s-authorised:
+    services: ${PRD_S2S_AUTHORISED_SERVICES:rd_professional_api,rd_user_profile_api,xui_webapp,finrem_payment_service,fpl_case_service,iac,aac_manage_case_assignment,divorce_frontend}
+  api.url: ${idam_url:https://idam-api.aat.platform.hmcts.net}
+
+oidc.issuer: ${OIDC_ISSUER_URL:https://forgerock-am.service.core-compute-idam-aat.internal:8443/openam/oauth2/hmcts}
+
+
+feign:
+  allow:
+    headers:
+      - authorization
+      - serviceauthorization
+
+# resent user invite interval in minutes
+resendInterval: 60
+
+# sync time interval in minutes
+syncInterval: 60
+
+loggingComponentName: RD_User_Profile_API

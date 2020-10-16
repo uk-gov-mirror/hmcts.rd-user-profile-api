@@ -1,0 +1,51 @@
+#!groovy
+@Library("Infrastructure") _
+
+properties([
+    parameters([
+        string(name: 'PRODUCT_NAME', defaultValue: 'rd', description: ''),
+        string(name: 'APP', defaultValue: 'user-profile-api', description: 'User Profile API'),
+        string(name: 'TYPE', defaultValue: 'java', description: ''),
+        string(name: 'ENVIRONMENT', defaultValue: 'sandbox', description: 'Environment where code should be build and deployed'),
+        choice(name: 'SUBSCRIPTION', choices: 'sandbox\nnonprod\nprod', description: 'Azure subscriptions available to build in')
+    ]),
+    [$class: 'GithubProjectProperty', projectUrlStr: 'https://github.com/hmcts/rd-user-profile-api.git'],
+    pipelineTriggers([[$class: 'GitHubPushTrigger']])
+])
+
+def secrets = [
+        's2s-${env}': [
+                secret('microservicekey-rd-user-profile-api', 'UP_S2S_SECRET')
+        ]
+]
+
+static LinkedHashMap<String, Object> secret(String secretName, String envVar) {
+  [$class     : 'AzureKeyVaultSecret',
+   secretType : 'Secret',
+   name       : secretName,
+   version    : '',
+   envVariable: envVar
+  ]
+}
+
+withParameterizedPipeline(params.TYPE, params.PRODUCT_NAME, params.APP, params.ENVIRONMENT, params.SUBSCRIPTION) {
+
+  setVaultName('rd')
+  loadVaultSecrets(secrets)
+
+  after('integrationTest:preview') {
+    steps.archiveArtifacts allowEmptyArchive: true, artifacts: '**/site/serenity/**/*'
+  }
+
+  after('integrationTest:aat') {
+    steps.archiveArtifacts allowEmptyArchive: true, artifacts: '**/site/serenity/**/*'
+  }
+
+  after('functionalTest:preview') {
+    steps.archiveArtifacts allowEmptyArchive: true, artifacts: '**/site/serenity/**/*'
+  }
+
+  after('functionalTest:aat') {
+    steps.archiveArtifacts allowEmptyArchive: true, artifacts: '**/site/serenity/**/*'
+  }
+}
